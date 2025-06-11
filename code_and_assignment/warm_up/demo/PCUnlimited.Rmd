@@ -1,0 +1,138 @@
+---
+title: "PC Unlimited Answers"
+output:
+  pdf_document: default
+  html_notebook: default
+  html_document:
+    df_print: paged
+---
+
+```{r, include=FALSE}
+library(tidyverse) #a handy tool for basic data analysis
+library(gmodels) # library for the command "CrossTable"
+
+
+# set working directory, for example, it can be where you save the data, 
+# or where you plan to save the output
+# setwd("~/Downloads")
+url <- "https://tinyurl.com/pcunlimited-csv"
+PCUnlimited <- read.csv(url) #load the data
+```
+
+
+```{r}
+# Take a peek at the data
+head(PCUnlimited)
+tail(PCUnlimited)
+```
+
+****** Q1, What percent of PCUnlimited customers are female?
+```{r}
+CrossTable(PCUnlimited$gender)
+
+# An alternative way, dplyr, which is much more versatile
+PCUnlimited %>% 
+  group_by(gender) %>% 
+  summarise(avg_spend_by_gender=mean(totdol), num_of_customer_by_gender=n()) %>% 
+  mutate(percentage=num_of_customer_by_gender/sum(num_of_customer_by_gender))
+```
+****** Q2, which regions has the highest number of customers?
+```{r}
+table(PCUnlimited$region)
+sort(table(PCUnlimited$region), decreasing = TRUE)
+# using pipe from dplyr
+PCUnlimited %>% 
+  group_by(region) %>% 
+  summarise(num_of_customer_by_region=n()) %>% 
+  arrange(desc(num_of_customer_by_region))
+```
+
+****** Q3, which regions have the highest and lowest average total spendings?
+```{r}
+PCUnlimited %>% 
+  group_by(region) %>% 
+  summarise(avg_spend_by_region=mean(totdol)) %>% 
+  arrange(desc(avg_spend_by_region))
+```
+
+****** Q4, What are the average $ spent and the total # of purchases by region? 
+```{r}
+PCUnlimited %>% group_by(region) %>% 
+  summarise(avg_spending = mean(totdol), tot_orders = sum(numpurch))
+```
+
+****** Q5, What are the average $ spent and the total # of purchases by gender? 
+```{r}
+PCUnlimited %>% 
+  group_by(gender) %>% 
+  summarise(avg_spend_by_gender = mean(totdol), 
+            tot_orders_by_gender = sum(numpurch))
+```
+
+****** Q6, Calculate the correlation between total spending and total # of orders. 
+```{r}
+cor(PCUnlimited$totdol, PCUnlimited$numpurch)
+cor.test(PCUnlimited$totdol, PCUnlimited$numpurch)
+```
+
+****** Q7, what are the percentages of male and female who responded to the offer?
+```{r}
+response_by_gender <- PCUnlimited %>% 
+                      group_by(gender, respond) %>% 
+                      summarise(n_by_gender_response=n()) %>% 
+  mutate(percentage = n_by_gender_response/sum(n_by_gender_response)*100)
+```
+
+****** Q8, what are min, max, and average of individual spending per order?
+```{r}
+spending_per_order <- PCUnlimited %>% 
+                        mutate(spending_per_order=totdol/numpurch) %>% 
+                        summarise(min=min(spending_per_order), 
+                                  max=max(spending_per_order),
+                                  avg=mean(spending_per_order))
+```
+
+****** Q9, can we show a bar chart of q3 above?
+```{r}
+spending_by_region <- PCUnlimited %>% 
+                        group_by(region) %>% 
+                        summarise(average_spending=mean(totdol)) %>% 
+                        arrange(desc(average_spending))
+bar_spending <- 
+  ggplot(data=spending_by_region, 
+         aes(x = region, y = average_spending)) + 
+  labs(x="Region", y="Average Spending") + 
+  geom_bar(stat="identity", fill="steelblue")
+bar_spending
+
+# without stat="identity", bar chart shows "count", 
+# which is one for each region in this case
+ggplot(data=spending_by_region, 
+       aes(x = region)) + 
+  labs(x="Region", y="Average Spending") + 
+  geom_bar(fill="steelblue") 
+
+# how about sort the region by their average spending?
+bar_spending_sorted <- 
+  ggplot(data=spending_by_region, 
+         aes(x = reorder(region, -average_spending), y = average_spending)) + 
+  labs(x="Region", y="Average Spending") + 
+  geom_bar(stat="identity")
+bar_spending_sorted
+```
+
+****** Q10. Create a new dataframe that contains only the variables of cust_num, respond, 
+and gender
+```{r}
+PCUlimited_subset <- PCUnlimited %>% 
+  select(cust_num, respond, gender)
+head(PCUlimited_subset)
+```
+
+****** Q11. Create a new dataframe that contains only urban female customers
+```{r}
+PCUnlimited_urban_female <- PCUnlimited %>% 
+  filter(gender=="female" & addresstype=="urban")
+head(PCUnlimited_urban_female)
+```
+
